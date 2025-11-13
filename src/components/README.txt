@@ -1,0 +1,1 @@
+Components are colocated in App for this demo build.
