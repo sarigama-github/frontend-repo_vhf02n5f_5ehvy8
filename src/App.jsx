@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Link, useNavigate, useLocation } from 're
 import { ShoppingCart, Heart, User, Menu, Moon, Sun, Search, Database } from 'lucide-react'
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
+const CATEGORIES = ['men','women','kids','sports','formal','casual']
 
 function useDarkMode() {
   const [dark, setDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches)
@@ -52,7 +53,7 @@ function Shell({ children }) {
 function Hero() {
   const navigate = useNavigate()
   return (
-    <div className="max-w-7xl mx-auto px-4 pt-10 pb-16 grid md:grid-cols-2 gap-8 items-center">
+    <div className="max-w-7xl mx-auto px-4 pt-10 pb-6 md:pb-10 grid md:grid-cols-2 gap-8 items-center">
       <div>
         <div className="inline-flex px-2 py-1 text-xs rounded-full bg-[#1E90FF]/10 text-[#1E90FF] mb-4">New Arrivals</div>
         <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4">Find your perfect stride</h1>
@@ -63,6 +64,25 @@ function Hero() {
         </div>
       </div>
       <div className="rounded-2xl bg-gradient-to-br from-[#1E90FF]/10 to-purple-500/10 aspect-square w-full" />
+    </div>
+  )
+}
+
+function CategoryChips(){
+  return (
+    <div className="max-w-7xl mx-auto px-4 pb-10 md:pb-12">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-semibold">Shop by category</h2>
+        <Link to="/shop" className="text-sm text-[#1E90FF]">View all</Link>
+      </div>
+      <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+        <Link to={`/shop`} className="shrink-0 px-3 py-1.5 rounded-full border border-neutral-300 dark:border-neutral-700 hover:border-[#1E90FF] hover:text-[#1E90FF] text-sm">All</Link>
+        {CATEGORIES.map(c => (
+          <Link key={c} to={`/shop?category=${encodeURIComponent(c)}`} className="shrink-0 px-3 py-1.5 rounded-full border border-neutral-300 dark:border-neutral-700 hover:border-[#1E90FF] hover:text-[#1E90FF] text-sm capitalize">
+            {c}
+          </Link>
+        ))}
+      </div>
     </div>
   )
 }
@@ -97,24 +117,54 @@ function Shop(){
   const [q, setQ] = useState('')
   const [cat, setCat] = useState('')
   const [items, setItems] = useState([])
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  // Sync local state from URL on mount and when search changes
+  useEffect(() => {
+    const sp = new URLSearchParams(location.search)
+    const initialQ = sp.get('q') || ''
+    const initialCat = sp.get('category') || ''
+    setQ(prev => (prev === initialQ ? prev : initialQ))
+    setCat(prev => (prev === initialCat ? prev : initialCat))
+  }, [location.search])
+
+  // Update URL when filters change
+  useEffect(() => {
+    const sp = new URLSearchParams()
+    if (q) sp.set('q', q)
+    if (cat) sp.set('category', cat)
+    const newSearch = sp.toString()
+    const current = location.search.replace(/^\?/, '')
+    if (newSearch !== current) {
+      navigate({ pathname: '/shop', search: newSearch ? `?${newSearch}` : '' }, { replace: true })
+    }
+  }, [q, cat])
+
   useEffect(()=>{
     const url = new URL(`${API_BASE}/api/products`)
     if (q) url.searchParams.set('q', q)
     if (cat) url.searchParams.set('category', cat)
     fetch(url.toString()).then(r=>r.json()).then(setItems)
   },[q,cat])
-  const cats = ['men','women','kids','sports','formal','casual']
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18}/>
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search shoes" className="w-full pl-9 pr-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"/>
         </div>
         <select value={cat} onChange={e=>setCat(e.target.value)} className="px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900">
           <option value="">All</option>
-          {cats.map(c=> <option key={c} value={c}>{c[0].toUpperCase()+c.slice(1)}</option>)}
+          {CATEGORIES.map(c=> <option key={c} value={c}>{c[0].toUpperCase()+c.slice(1)}</option>)}
         </select>
+      </div>
+      <div className="flex gap-2 overflow-x-auto no-scrollbar mb-6">
+        <button onClick={()=>setCat('')} className={`shrink-0 px-3 py-1.5 rounded-full border text-sm ${cat === '' ? 'border-[#1E90FF] text-[#1E90FF]' : 'border-neutral-300 dark:border-neutral-700 hover:border-[#1E90FF] hover:text-[#1E90FF]'}`}>All</button>
+        {CATEGORIES.map(c => (
+          <button key={c} onClick={()=>setCat(c)} className={`shrink-0 px-3 py-1.5 rounded-full border text-sm capitalize ${cat === c ? 'border-[#1E90FF] text-[#1E90FF]' : 'border-neutral-300 dark:border-neutral-700 hover:border-[#1E90FF] hover:text-[#1E90FF]'}`}>{c}</button>
+        ))}
       </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {items.map(p=> <ProductCard key={p.id} product={p}/>)}
@@ -231,7 +281,7 @@ function Admin(){
         <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Title" className="px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"/>
         <input value={price} onChange={e=>setPrice(e.target.value)} placeholder="Price" className="px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"/>
         <select value={category} onChange={e=>setCategory(e.target.value)} className="px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900">
-          {['men','women','kids','sports','formal','casual'].map(c=> <option key={c} value={c}>{c}</option>)}
+          {CATEGORIES.map(c=> <option key={c} value={c}>{c}</option>)}
         </select>
         <input value={modelUrl} onChange={e=>setModelUrl(e.target.value)} placeholder="3D Model URL (.glb/.gltf)" className="px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"/>
         <input value={imageUrl} onChange={e=>setImageUrl(e.target.value)} placeholder="Image URL" className="px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"/>
@@ -246,6 +296,7 @@ function Home(){
   return (
     <>
       <Hero/>
+      <CategoryChips/>
       <Featured/>
     </>
   )
