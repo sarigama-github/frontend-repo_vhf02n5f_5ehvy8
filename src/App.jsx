@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BrowserRouter, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom'
-import { ShoppingCart, Heart, User, Menu, Moon, Sun, Search } from 'lucide-react'
+import { ShoppingCart, Heart, User, Menu, Moon, Sun, Search, Database } from 'lucide-react'
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
 
@@ -117,7 +117,7 @@ function Shop(){
         </select>
       </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {items.map(p=> <ProductCard key={p.id} product={p}/>) }
+        {items.map(p=> <ProductCard key={p.id} product={p}/>)}
       </div>
     </div>
   )
@@ -189,6 +189,9 @@ function Admin(){
   const [modelUrl,setModelUrl]=useState('')
   const [imageUrl,setImageUrl]=useState('')
   const [saving,setSaving]=useState(false)
+  const [seeding,setSeeding]=useState(false)
+  const [seedInfo,setSeedInfo]=useState(null)
+
   const save = async ()=>{
     setSaving(true)
     const payload={title, price: parseFloat(price||'0'), categories:[category], images: imageUrl? [imageUrl]:[], model_url:modelUrl, variants:[{size:'8', color:'black', stock:10}]}
@@ -196,10 +199,35 @@ function Admin(){
     setSaving(false)
     alert('Product saved')
   }
+
+  const seed = async ()=>{
+    try {
+      setSeeding(true)
+      const res = await fetch(`${API_BASE}/api/admin/seed`, {method:'POST'})
+      const data = await res.json()
+      setSeedInfo(data)
+      alert('Sample catalog loaded')
+    } catch (e) {
+      alert('Failed to load sample data')
+    } finally {
+      setSeeding(false)
+    }
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
       <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
       <div className="grid gap-4">
+        <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="font-semibold flex items-center gap-2"><Database size={18}/> Load sample catalog</div>
+            <button disabled={seeding} onClick={seed} className="px-3 py-2 rounded-md text-white font-medium" style={{background:'#1E90FF'}}>{seeding? 'Seeding...' : 'Load samples'}</button>
+          </div>
+          <p className="text-sm text-neutral-500">Preloads demo products with images and 3D models so you can explore the app instantly.</p>
+          {seedInfo && (
+            <div className="text-xs text-neutral-500 mt-2">Created: {seedInfo.created?.length || 0} • Total products: {seedInfo.total}</div>
+          )}
+        </div>
         <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Title" className="px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"/>
         <input value={price} onChange={e=>setPrice(e.target.value)} placeholder="Price" className="px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"/>
         <select value={category} onChange={e=>setCategory(e.target.value)} className="px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900">
@@ -209,7 +237,7 @@ function Admin(){
         <input value={imageUrl} onChange={e=>setImageUrl(e.target.value)} placeholder="Image URL" className="px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"/>
         <button disabled={saving} onClick={save} className="px-5 py-3 rounded-lg text-white font-semibold" style={{background:'#1E90FF'}}>{saving? 'Saving...' : 'Save Product'}</button>
       </div>
-      <p className="text-sm text-neutral-500 mt-4">Add sample 3D models by pasting a public .glb/.gltf URL. You can use sample from public domain.</p>
+      <p className="text-sm text-neutral-500 mt-4">Add sample 3D models by pasting a public .glb/.gltf URL. Example: modelviewer.dev shared-assets.</p>
     </div>
   )
 }
